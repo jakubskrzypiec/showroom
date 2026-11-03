@@ -105,6 +105,9 @@ const smooth = (e0, e1, x) => {
 };
 
 /* ------------------------------------------------------------------ */
+const REEL = new URLSearchParams(location.search).has("reel");
+const reelClock = { dt: 1 / 30, t: 0 };
+
 export function createScene(canvas, { onProgress } = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
   const DPR = Math.min(window.devicePixelRatio, isMobile ? 1.5 : 1.75);
@@ -566,9 +569,15 @@ export function createScene(canvas, { onProgress } = {}) {
 
   function frame() {
     if (!state.running) return;
-    clock.update();
-    const dt = Math.min(clock.getDelta(), 0.05);
-    const t = clock.getElapsed();
+    let dt, t;
+    if (REEL) {
+      dt = reelClock.dt;
+      t = reelClock.t;
+    } else {
+      clock.update();
+      dt = Math.min(clock.getDelta(), 0.05);
+      t = clock.getElapsed();
+    }
 
     state.p += (state.target - state.p) * Math.min(1, dt * 5.5);
     state.afterS += (state.after - state.afterS) * Math.min(1, dt * 4);
@@ -624,7 +633,7 @@ export function createScene(canvas, { onProgress } = {}) {
     clouds.forEach((c) => (c.visible = cloudFade > 0.001));
 
     // city vs globe: street level only while we are low, the planet everywhere else
-    const cityVis = camPos.y < 20 && (descending ? d > 0.5 : p < 0.42);
+    const cityVis = !REEL && camPos.y < 20 && (descending ? d > 0.5 : p < 0.42);
     city.group.visible = cityVis;
     earthPivot.visible = atmo.visible = !cityVis;
     city.update(t, descending ? smooth(0.8, 1, d) : 0);
@@ -679,7 +688,7 @@ export function createScene(canvas, { onProgress } = {}) {
     // nothing to draw while the studio interior covers the screen
     if (!state.covered) composer.render();
     if (state.onFrame) state.onFrame({ p, d, speed, camY: camPos.y, layers: CLOUD_LAYERS, cloudFade });
-    requestAnimationFrame(frame);
+    if (!REEL) requestAnimationFrame(frame);
   }
 
   function resize() {
@@ -701,6 +710,7 @@ export function createScene(canvas, { onProgress } = {}) {
   });
 
   document.addEventListener("visibilitychange", () => {
+    if (REEL) return;
     if (document.hidden) {
       state.running = false;
     } else if (!state.running) {
@@ -711,10 +721,23 @@ export function createScene(canvas, { onProgress } = {}) {
   });
 
   // render the very first frame so the canvas isn't blank behind the preloader
-  requestAnimationFrame(frame);
+  if (!REEL) requestAnimationFrame(frame);
+
+  // tryb nagrywania: jedna klatka na wywołanie, w stałym czasie
+  function reelFrame(p, t) {
+    state.target = state.p = p;
+    state.d = state.descent = 0;
+    state.after = state.afterS = 0;
+    state.mouse.set(0, 0);
+    state.mouseS.set(0, 0);
+    reelClock.t = t;
+    state.running = true;
+    frame();
+  }
 
   return {
     loaded,
+    reelFrame,
     setProgress: (v) => (state.target = v),
     setAfter: (v) => (state.after = v),
     setDescent: (v) => (state.descent = v),

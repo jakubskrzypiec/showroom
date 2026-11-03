@@ -11,6 +11,7 @@ const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const finePointer = window.matchMedia("(pointer: fine)").matches;
 
+const REEL = new URLSearchParams(location.search).has("reel");
 if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 window.scrollTo(0, 0);
 
@@ -18,7 +19,7 @@ window.scrollTo(0, 0);
 /* Smooth scroll                                                       */
 /* ------------------------------------------------------------------ */
 let lenis = null;
-if (!reduceMotion) {
+if (!reduceMotion && !REEL) {
   lenis = new Lenis({ lerp: 0.075, smoothWheel: true, wheelMultiplier: 0.85 });
   lenis.on("scroll", ScrollTrigger.update);
   gsap.ticker.add((time) => lenis.raf(time * 1000));
@@ -216,6 +217,7 @@ function applyOverlays() {
   hud.style.transform = `translateY(${(1 - h) * 20}px)`;
 }
 
+let flightTl = null;
 function initFlight() {
   const heroTitle = $("[data-hero-title]");
   const heroWords = splitWords(heroTitle);
@@ -242,6 +244,10 @@ function initFlight() {
   tl.fromTo([$(".lede--hero"), $(".hero__ctas")], { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.04, stagger: 0.02 }, 0.9);
   tl.to({}, { duration: 0.04 }, 0.96); // hold at the end
 
+  if (REEL) {
+    flightTl = tl;
+    return;
+  }
   ScrollTrigger.create({
     trigger: "[data-flight]",
     start: "top top",
@@ -618,10 +624,64 @@ initLaunch();
 initCursor();
 initDetails();
 
-runPreloader().then(() => {
-  if (lenis) lenis.start();
-  ScrollTrigger.refresh();
-});
+if (REEL) initReel();
+else
+  runPreloader().then(() => {
+    if (lenis) lenis.start();
+    ScrollTrigger.refresh();
+  });
+
+/* ------------------------------------------------------------------ */
+/* Tryb nagrywania rolki (?reel): start od razu w niebie, klatka po klatce */
+/* ------------------------------------------------------------------ */
+function initReel() {
+  document.documentElement.classList.add("reel");
+  $("[data-preloader]")?.remove();
+  const ov = document.createElement("div");
+  ov.className = "reel-overlay";
+  ov.innerHTML = `
+    <div class="reel-hook"><span>Tak może zaczynać się</span><b>Twoja strona.</b></div>
+    <div class="reel-end">
+      <p class="reel-kicker">Projekt · strona 3D · scroll</p>
+      <h2>Robię strony,<br>które zatrzymują<br><em>scroll.</em></h2>
+      <p class="reel-lede">Szukam marek, które chcą high-endowej strony 3D. Takiej jak ta.</p>
+      <p class="reel-cta"><span class="pill__dot"></span>Napisz do mnie w DM</p>
+    </div>`;
+  document.body.appendChild(ov);
+  const hook = $(".reel-hook", ov);
+  const end = $(".reel-end", ov);
+  const endBits = [...end.children];
+  const sm = (a, b, x) => {
+    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+  const P0 = 0.2; // start nad dachami, w niebie
+  window.__reel = {
+    ready: scene.loaded,
+    // sec: czas klatki w sekundach; dur: długość przelotu; total: długość rolki
+    step(sec, dur = 9.5) {
+      const x = Math.min(1, sec / dur);
+      const q = 0.5 - 0.5 * Math.cos(Math.PI * x); // łagodny start i lądowanie, równe tempo w środku
+      const p = P0 + (1 - P0) * q;
+      flightTl.progress(Math.min(1, p));
+      updateHud(altitudeAt(p));
+      scene.reelFrame(p, sec);
+      hook.style.opacity = (sm(0.2, 0.8, sec) * (1 - sm(2.4, 3.0, sec))).toFixed(3);
+      hook.style.transform = `translateY(${((1 - sm(0.2, 0.9, sec)) * 24).toFixed(1)}px)`;
+      const e0 = dur + 0.8;
+      const hudEl = $("[data-hud]");
+      hudEl.style.opacity = (1 - sm(0.6, 0.7, p)).toFixed(3);
+      $(".flight__sticky").style.opacity = (1 - sm(e0, e0 + 0.7, sec)).toFixed(3);
+      document.documentElement.style.setProperty("--reel-dim", sm(e0, e0 + 0.9, sec).toFixed(3));
+      endBits.forEach((el, i) => {
+        const a = sm(e0 + 0.3 + i * 0.25, e0 + 1.0 + i * 0.25, sec);
+        el.style.opacity = a.toFixed(3);
+        el.style.transform = `translateY(${((1 - a) * 30).toFixed(1)}px)`;
+        el.style.filter = `blur(${((1 - a) * 8).toFixed(1)}px)`;
+      });
+    },
+  };
+}
 
 document.fonts?.ready.then(() => ScrollTrigger.refresh());
 window.addEventListener("load", () => ScrollTrigger.refresh());
