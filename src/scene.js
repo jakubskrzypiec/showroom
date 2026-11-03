@@ -3,6 +3,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { createCity } from "./city.js";
 
 /* ------------------------------------------------------------------ */
 /*  Palette (from the brand board)                                     */
@@ -43,7 +44,7 @@ const NOISE = /* glsl */ `
 /* ------------------------------------------------------------------ */
 const KEYS = [
   // p,    position,                       look target
-  [0.0, new THREE.Vector3(0, 0.4, 0), new THREE.Vector3(0, 7, -12)],
+  [0.0, new THREE.Vector3(0, 1.1, 14), new THREE.Vector3(0, 6.5, -14)],
   [0.18, new THREE.Vector3(0, 7, -1), new THREE.Vector3(0, 16, -13)],
   [0.36, new THREE.Vector3(0, 21, -2), new THREE.Vector3(0, 30, -14)],
   [0.5, new THREE.Vector3(0, 34, 6), new THREE.Vector3(0, 6, -60)],
@@ -51,23 +52,43 @@ const KEYS = [
   [0.8, new THREE.Vector3(10, 2, 160), new THREE.Vector3(0, -48, 0)],
   [1.0, new THREE.Vector3(-30, -16, 182), new THREE.Vector3(-30, -50, 0)],
 ];
-const posCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => k[1]), false, "centripetal");
-const tgtCurve = new THREE.CatmullRomCurve3(KEYS.map((k) => k[2]), false, "centripetal");
+// camera drift applied while the content sections scroll (a = 0..1)
+const AFTER_POS = new THREE.Vector3(-40, 26, 60);
+const AFTER_TGT = new THREE.Vector3(-18, 0, 0);
 
-function pToCurveT(p) {
-  // piecewise-linear remap so each keyframe lands on its p value
-  const n = KEYS.length - 1;
-  for (let i = 0; i < n; i++) {
-    const a = KEYS[i][0];
-    const b = KEYS[i + 1][0];
-    if (p <= b) {
-      const local = (p - a) / (b - a);
-      const s = local * local * (3 - 2 * local); // ease within segment
-      return (i + s) / n;
+// return trip: from where the content ends, back down onto Katowice and in through the studio window
+const D_KEYS = [
+  [0.0, KEYS[KEYS.length - 1][1].clone().add(AFTER_POS), KEYS[KEYS.length - 1][2].clone().add(AFTER_TGT)],
+  [0.2, new THREE.Vector3(-10, 60, 150), new THREE.Vector3(0, -50, 0)],
+  [0.38, new THREE.Vector3(0, 50, 30), new THREE.Vector3(0, -10, -20)],
+  [0.55, new THREE.Vector3(0, 19, 12), new THREE.Vector3(0, 0, -8)],
+  [0.72, new THREE.Vector3(0, 4.5, 17), new THREE.Vector3(0, 2.2, -14)],
+  [0.88, new THREE.Vector3(0, 2.45, -6), new THREE.Vector3(0, 2.4, -16)],
+  [1.0, new THREE.Vector3(0, 2.4, -13.2), new THREE.Vector3(0, 2.4, -20)],
+];
+
+function makePath(keys) {
+  const pos = new THREE.CatmullRomCurve3(keys.map((k) => k[1]), false, "centripetal");
+  const tgt = new THREE.CatmullRomCurve3(keys.map((k) => k[2]), false, "centripetal");
+  const n = keys.length - 1;
+  return (p, outPos, outTgt) => {
+    // piecewise remap so each keyframe lands on its progress value, eased within each segment
+    let t = 1;
+    for (let i = 0; i < n; i++) {
+      const a = keys[i][0];
+      const b = keys[i + 1][0];
+      if (p <= b) {
+        const local = Math.max(0, (p - a) / (b - a));
+        t = (i + local * local * (3 - 2 * local)) / n;
+        break;
+      }
     }
-  }
-  return 1;
+    pos.getPoint(t, outPos);
+    tgt.getPoint(t, outTgt);
+  };
 }
+const ascentPath = makePath(KEYS);
+const descentPath = makePath(D_KEYS);
 
 const smooth = (e0, e1, x) => {
   const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
@@ -322,7 +343,8 @@ export function createScene(canvas, { onProgress } = {}) {
     const theta = ((lon + 180) * Math.PI) / 180;
     return new THREE.Vector3(-Math.sin(phi) * Math.cos(theta), Math.cos(phi), Math.sin(phi) * Math.sin(theta));
   };
-  earthPivot.quaternion.setFromUnitVectors(latLon(52.2, 19.4), new THREE.Vector3(0, 1, 0));
+  // Katowice (50.26° N, 19.02° E) sits on top of the globe, right where the city is built
+  earthPivot.quaternion.setFromUnitVectors(latLon(50.26, 19.02), new THREE.Vector3(0, 1, 0));
 
   const earthUniforms = {
     uDay: { value: dayMap },
@@ -431,6 +453,16 @@ export function createScene(canvas, { onProgress } = {}) {
   atmo.position.copy(EARTH_CENTER);
   scene.add(atmo);
 
+  /* ---------------- Katowice at street level ---------------- */
+  const city = createCity({
+    horizon: C.cobalt.clone().multiplyScalar(0.7).lerp(C.cyan, 0.08),
+    cobalt: C.cobalt,
+    cyan: C.cyan,
+    amber: C.amber,
+    bg: C.bg,
+  });
+  scene.add(city.group);
+
   // orbit rings (appear around the globe at the end of the flight)
   const rings = new THREE.Group();
   rings.position.copy(EARTH_CENTER);
@@ -480,6 +512,8 @@ export function createScene(canvas, { onProgress } = {}) {
     p: 0, // smoothed flight progress
     after: 0, // progress through post-flight content
     afterS: 0,
+    descent: 0, // return trip progress
+    d: 0,
     mouse: new THREE.Vector2(),
     mouseS: new THREE.Vector2(),
     spin: 0,
@@ -500,38 +534,42 @@ export function createScene(canvas, { onProgress } = {}) {
     state.p += (state.target - state.p) * Math.min(1, dt * 5.5);
     state.afterS += (state.after - state.afterS) * Math.min(1, dt * 4);
     state.mouseS.lerp(state.mouse, Math.min(1, dt * 3));
+    state.d += (state.descent - state.d) * Math.min(1, dt * 5.5);
+    if (state.descent === 0 && state.d < 0.0005) state.d = 0;
     const p = state.p;
-
-    // camera along the path
-    const ct = pToCurveT(p);
-    posCurve.getPoint(ct, camPos);
-    tgtCurve.getPoint(ct, camTgt);
-
-    // post-flight drift: slowly orbit wider so content reads over the planet
+    const d = state.d;
     const a = state.afterS;
-    camPos.x += -a * 40;
-    camPos.y += a * 26;
-    camPos.z += a * 60;
-    camTgt.x += -a * 18;
+    const descending = d > 0;
 
-    // subtle pointer parallax (stronger in space)
-    const par = 0.6 + smooth(0.5, 1, p) * 5;
+    if (descending) {
+      descentPath(d, camPos, camTgt);
+    } else {
+      ascentPath(p, camPos, camTgt);
+      // post-flight drift: slowly orbit wider so content reads over the planet
+      camPos.addScaledVector(AFTER_POS, a);
+      camTgt.addScaledVector(AFTER_TGT, a);
+    }
+
+    // subtle pointer parallax (stronger in space, calm near the ground)
+    const groundCalm = descending ? 1 - smooth(0.6, 0.85, d) : 1;
+    const par = (0.6 + (descending ? 5 * (1 - smooth(0.3, 0.6, d)) : smooth(0.5, 1, p) * 5)) * groundCalm + 0.15;
     camPos.x += state.mouseS.x * par;
     camPos.y += state.mouseS.y * par * 0.6;
     // a little handheld drift
-    camPos.x += Math.sin(t * 0.35) * 0.12;
-    camPos.y += Math.cos(t * 0.27) * 0.1;
+    camPos.x += Math.sin(t * 0.35) * 0.12 * groundCalm;
+    camPos.y += Math.cos(t * 0.27) * 0.1 * groundCalm;
 
     camera.position.copy(camPos);
     camera.lookAt(camTgt);
-    // gentle roll during the climb
-    camera.rotateZ(Math.sin(p * Math.PI * 2) * 0.05 * (1 - smooth(0.5, 0.8, p)));
+    // gentle roll during the climb and the re-entry
+    if (descending) camera.rotateZ(Math.sin(d * Math.PI * 2) * 0.05 * (1 - smooth(0.6, 0.8, d)));
+    else camera.rotateZ(Math.sin(p * Math.PI * 2) * 0.05 * (1 - smooth(0.5, 0.8, p)));
 
     const speed = camPos.distanceTo(prevCam) / Math.max(dt, 0.001);
     prevCam.copy(camPos);
 
     // atmosphere -> space
-    const space = smooth(0.2, 0.52, p);
+    const space = smooth(0.2, 0.52, p) * (1 - smooth(0.42, 0.66, d));
     skyUniforms.uSpace.value = space;
     skyUniforms.uTime.value = t;
     sky.position.copy(camPos);
@@ -542,11 +580,19 @@ export function createScene(canvas, { onProgress } = {}) {
     // clouds
     cloudUniformsShared.uTime.value = t;
     cloudUniformsShared.uCamPos.value.copy(camPos);
-    cloudUniformsShared.uFade.value = 1 - smooth(0.4, 0.5, p);
-    clouds.forEach((c) => (c.visible = p < 0.52));
+    const cloudFade = descending ? smooth(0.36, 0.48, d) : 1 - smooth(0.4, 0.5, p);
+    cloudUniformsShared.uFade.value = cloudFade;
+    clouds.forEach((c) => (c.visible = cloudFade > 0.001));
 
-    // streaks: tied to climb speed during the ascent
-    const climb = 1 - smooth(0.4, 0.5, p);
+    // city vs globe: street level only while we are low, the planet everywhere else
+    const cityVis = camPos.y < 20 && (descending ? d > 0.5 : p < 0.42);
+    city.group.visible = cityVis;
+    earthPivot.visible = atmo.visible = !cityVis;
+    city.update(t, descending ? smooth(0.8, 1, d) : 0);
+
+    // streaks: tied to speed through the atmosphere (up on the climb, down on re-entry)
+    const climb = descending ? smooth(0.3, 0.45, d) * (1 - smooth(0.68, 0.78, d)) : 1 - smooth(0.4, 0.5, p);
+    const dir = descending ? 1 : -1;
     const sAmt = Math.min(1, speed / 26) * climb;
     streakMat.opacity = sAmt * 0.55;
     streaks.visible = sAmt > 0.01;
@@ -554,8 +600,9 @@ export function createScene(canvas, { onProgress } = {}) {
       const len = 0.4 + sAmt * 4.5;
       for (let i = 0; i < STREAKS; i++) {
         const s = streakSeeds[i];
-        s.y -= dt * (6 + sAmt * 60);
+        s.y += dir * dt * (6 + sAmt * 60);
         if (s.y < -6) s.y += 46;
+        if (s.y > 40) s.y -= 46;
         const x = camPos.x + Math.cos(s.a) * s.r;
         const z = camPos.z + Math.sin(s.a) * s.r - 4;
         const y = camPos.y + s.y;
@@ -565,13 +612,16 @@ export function createScene(canvas, { onProgress } = {}) {
     }
 
     // earth spin: scroll-driven after breakout + slow idle rotation once in orbit
-    state.spin += dt * 0.035 * smooth(0.55, 0.8, p);
-    earthSpin.rotation.y = smooth(0.5, 1, p) * 2.2 + state.spin + a * 0.8;
+    if (!descending) state.spin += dt * 0.035 * smooth(0.55, 0.8, p);
+    const spinBase = smooth(0.5, 1, p) * 2.2 + state.spin + a * 0.8;
+    // on the way home, roll the planet forward until Katowice faces up again
+    const homeSpin = Math.ceil(spinBase / (Math.PI * 2)) * Math.PI * 2;
+    earthSpin.rotation.y = descending ? THREE.MathUtils.lerp(spinBase, homeSpin, smooth(0.04, 0.42, d)) : spinBase;
     earthUniforms.uCloudShift.value = t * 0.002;
     earthUniforms.uTime.value = t;
 
     // rings + satellites
-    const ringA = smooth(0.78, 0.95, p) * (1 - a * 0.5);
+    const ringA = smooth(0.78, 0.95, p) * (1 - a * 0.5) * (1 - smooth(0, 0.22, d));
     rings.rotation.y = t * 0.04;
     rings.children.forEach((line, i) => {
       line.material.opacity = ringA * (i === 1 ? 0.75 : 0.5);
@@ -587,8 +637,9 @@ export function createScene(canvas, { onProgress } = {}) {
 
     bloom.strength = 0.4 + space * 0.3;
 
-    composer.render();
-    if (state.onFrame) state.onFrame({ p, speed, camY: camPos.y, layers: CLOUD_LAYERS });
+    // nothing to draw while the studio interior covers the screen
+    if (!state.covered) composer.render();
+    if (state.onFrame) state.onFrame({ p, d, speed, camY: camPos.y, layers: CLOUD_LAYERS, cloudFade });
     requestAnimationFrame(frame);
   }
 
@@ -627,6 +678,8 @@ export function createScene(canvas, { onProgress } = {}) {
     loaded,
     setProgress: (v) => (state.target = v),
     setAfter: (v) => (state.after = v),
+    setDescent: (v) => (state.descent = v),
+    setCovered: (v) => (state.covered = v),
     set onFrame(fn) {
       state.onFrame = fn;
     },

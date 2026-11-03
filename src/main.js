@@ -115,7 +115,42 @@ function altitudeAt(p) {
   }
   return 35786;
 }
+// inverse of altitudeAt: where a given altitude sits on the gauge
+function gaugeAt(km) {
+  for (let i = 0; i < ALT_KEYS.length - 1; i++) {
+    const [p0, a0] = ALT_KEYS[i];
+    const [p1, a1] = ALT_KEYS[i + 1];
+    if (km <= a1) {
+      const t = a0 > 0 && a1 / a0 > 4 ? Math.log(km / a0) / Math.log(a1 / a0) : (km - a0) / (a1 - a0);
+      return p0 + (p1 - p0) * Math.max(0, Math.min(1, t));
+    }
+  }
+  return 1;
+}
+// return trip altitude over descent progress
+const D_ALT = [
+  [0, 35786],
+  [0.2, 8000],
+  [0.38, 100],
+  [0.48, 50],
+  [0.6, 12],
+  [0.74, 0.6],
+  [0.88, 0.03],
+  [1, 0.025],
+];
+function descentAltitude(d) {
+  for (let i = 0; i < D_ALT.length - 1; i++) {
+    const [p0, a0] = D_ALT[i];
+    const [p1, a1] = D_ALT[i + 1];
+    if (d <= p1) {
+      const t = (d - p0) / (p1 - p0);
+      return a0 * Math.pow(a1 / a0, t);
+    }
+  }
+  return 0.025;
+}
 function layerName(km) {
+  if (km < 1) return "Katowice";
   if (km < 12) return "Troposphere";
   if (km < 50) return "Stratosphere";
   if (km < 85) return "Mesosphere";
@@ -133,9 +168,9 @@ const mistEl = $("[data-mist]");
 const hud = $("[data-hud]");
 let lastLayer = "";
 
-function updateHud(p) {
-  const km = altitudeAt(p);
-  altEl.textContent = km < 1000 ? km.toFixed(1) : Math.round(km).toLocaleString("en-US").replace(/,/g, " ");
+function updateHud(km) {
+  const p = gaugeAt(km);
+  altEl.textContent = km < 1 ? km.toFixed(3) : km < 1000 ? km.toFixed(1) : Math.round(km).toLocaleString("en-US").replace(/,/g, " ");
   const name = layerName(km);
   if (name !== lastLayer) {
     lastLayer = name;
@@ -147,16 +182,39 @@ function updateHud(p) {
 }
 
 // mist "punch-through" when the camera crosses a cloud layer
-scene.onFrame = ({ p, camY, layers }) => {
+scene.onFrame = ({ camY, layers, cloudFade }) => {
   let m = 0;
-  if (p < 0.48) {
+  if (cloudFade > 0.01) {
     for (const y of layers) {
       const dy = camY - y;
       m = Math.max(m, Math.exp(-(dy * dy) / 0.9));
     }
   }
-  mistEl.style.opacity = (m * 0.6).toFixed(3);
+  mistEl.style.opacity = (m * 0.6 * cloudFade).toFixed(3);
 };
+
+/* overlays that depend on several scroll ranges at once */
+const vis = { hudUp: 1, content: 0, contentAurora: 0, d: 0 };
+const veilEl = $("[data-veil]");
+const auroraEl = $("[data-aurora]");
+const roomEl = $("[data-room]");
+const sm = (e0, e1, x) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+function applyOverlays() {
+  const d = vis.d;
+  const away = 1 - sm(0, 0.1, d); // content dressing clears for the re-entry
+  veilEl.style.opacity = (vis.content * away).toFixed(3);
+  auroraEl.style.opacity = (vis.contentAurora * 0.85 * away).toFixed(3);
+  const room = sm(0.9, 0.965, d);
+  roomEl.style.opacity = room.toFixed(3);
+  scene.setCovered(room >= 0.999);
+  const hudDown = sm(0.03, 0.09, d) * (1 - sm(0.86, 0.92, d));
+  const h = d > 0 ? hudDown : vis.hudUp;
+  hud.style.opacity = h.toFixed(3);
+  hud.style.transform = `translateY(${(1 - h) * 20}px)`;
+}
 
 function initFlight() {
   const heroTitle = $("[data-hero-title]");
@@ -192,16 +250,19 @@ function initFlight() {
     animation: tl,
     onUpdate: (self) => {
       scene.setProgress(self.progress);
-      updateHud(self.progress);
+      if (vis.d === 0) updateHud(altitudeAt(self.progress));
     },
   });
 
   // HUD bows out after orbit
-  gsap.to(hud, {
-    autoAlpha: 0,
-    y: 20,
-    ease: "none",
-    scrollTrigger: { trigger: "[data-flight]", start: "bottom 110%", end: "bottom 70%", scrub: true },
+  ScrollTrigger.create({
+    trigger: "[data-flight]",
+    start: "bottom 110%",
+    end: "bottom 70%",
+    onUpdate: (self) => {
+      vis.hudUp = 1 - self.progress;
+      applyOverlays();
+    },
   });
 }
 
@@ -212,20 +273,67 @@ function initAfterFlight() {
   ScrollTrigger.create({
     trigger: "#manifesto",
     start: "top bottom",
-    endTrigger: "#launch",
-    end: "bottom bottom",
+    endTrigger: "#descent",
+    end: "top top",
     onUpdate: (self) => scene.setAfter(self.progress),
   });
-  gsap.fromTo(
-    "[data-veil]",
-    { autoAlpha: 0 },
-    { autoAlpha: 1, ease: "none", scrollTrigger: { trigger: "#manifesto", start: "top bottom", end: "top 20%", scrub: true } }
-  );
-  gsap.fromTo(
-    "[data-aurora]",
-    { autoAlpha: 0 },
-    { autoAlpha: 0.85, ease: "none", scrollTrigger: { trigger: "#manifesto", start: "top 80%", end: "top top", scrub: true } }
-  );
+  ScrollTrigger.create({
+    trigger: "#manifesto",
+    start: "top bottom",
+    end: "top 20%",
+    onUpdate: (self) => {
+      vis.content = self.progress;
+      applyOverlays();
+    },
+  });
+  ScrollTrigger.create({
+    trigger: "#manifesto",
+    start: "top 80%",
+    end: "top top",
+    onUpdate: (self) => {
+      vis.contentAurora = self.progress;
+      applyOverlays();
+    },
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Descent: back through the atmosphere, onto Katowice, in the window  */
+/* ------------------------------------------------------------------ */
+function initDescent() {
+  const scenes = Object.fromEntries($$("[data-dscene]").map((el) => [el.dataset.dscene, el]));
+  const studioWords = splitWords($(".display", scenes.d5));
+  const tl = gsap.timeline({ defaults: { ease: "none" } });
+  const fadeIn = (el, at, dur = 0.035) =>
+    tl.fromTo(el, { autoAlpha: 0, y: 60, filter: "blur(10px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: dur }, at);
+  const fadeOut = (el, at, dur = 0.035) => tl.to(el, { autoAlpha: 0, y: -60, filter: "blur(10px)", duration: dur }, at);
+
+  fadeIn(scenes.d1, 0.04);
+  fadeOut(scenes.d1, 0.17);
+  fadeIn(scenes.d2, 0.24);
+  fadeOut(scenes.d2, 0.35);
+  tl.fromTo(scenes.d3, { autoAlpha: 0, scale: 0.88, filter: "blur(14px)" }, { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: 0.05 }, 0.6);
+  tl.to(scenes.d3, { autoAlpha: 0, scale: 1.12, filter: "blur(14px)", duration: 0.04 }, 0.72);
+  fadeIn(scenes.d4, 0.77, 0.03);
+  fadeOut(scenes.d4, 0.86, 0.03);
+  tl.set(scenes.d5, { autoAlpha: 1 }, 0.95);
+  tl.fromTo($(".eyebrow", scenes.d5), { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.015 }, 0.955);
+  tl.fromTo(studioWords, { yPercent: 110 }, { yPercent: 0, duration: 0.025, stagger: 0.006 }, 0.96);
+  tl.to({}, { duration: 0.01 }, 0.99);
+
+  ScrollTrigger.create({
+    trigger: "[data-descent]",
+    start: "top top",
+    end: "bottom bottom",
+    scrub: reduceMotion ? true : 0.6,
+    animation: tl,
+    onUpdate: (self) => {
+      vis.d = self.progress;
+      scene.setDescent(self.progress);
+      if (self.progress > 0) updateHud(descentAltitude(self.progress));
+      applyOverlays();
+    },
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -500,6 +608,7 @@ function introAnimation() {
 
 initFlight();
 initAfterFlight();
+initDescent();
 initManifesto();
 initReveals();
 initStack();
