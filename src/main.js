@@ -94,9 +94,10 @@ function appendWords(parent, text, wordClass) {
 /* Flight: scroll-scrubbed ascent                                      */
 /* ------------------------------------------------------------------ */
 const ALT_KEYS = [
-  [0, 0],
-  [0.18, 7],
-  [0.25, 12],
+  [0, 0.005],
+  [0.12, 0.012],
+  [0.2, 2],
+  [0.27, 12],
   [0.4, 50],
   [0.52, 100],
   [0.7, 400],
@@ -135,8 +136,8 @@ const D_ALT = [
   [0.48, 50],
   [0.6, 12],
   [0.74, 0.6],
-  [0.88, 0.03],
-  [1, 0.025],
+  [0.88, 0.012],
+  [1, 0.005],
 ];
 function descentAltitude(d) {
   for (let i = 0; i < D_ALT.length - 1; i++) {
@@ -147,7 +148,7 @@ function descentAltitude(d) {
       return a0 * Math.pow(a1 / a0, t);
     }
   }
-  return 0.025;
+  return 0.005;
 }
 function layerName(km) {
   if (km < 1) return "Katowice";
@@ -207,9 +208,8 @@ function applyOverlays() {
   const away = 1 - sm(0, 0.1, d); // content dressing clears for the re-entry
   veilEl.style.opacity = (vis.content * away).toFixed(3);
   auroraEl.style.opacity = (vis.contentAurora * 0.85 * away).toFixed(3);
-  const room = sm(0.9, 0.965, d);
-  roomEl.style.opacity = room.toFixed(3);
-  scene.setCovered(room >= 0.999);
+  // a soft dim over the real 3D room, so the welcome text and the contact section read
+  roomEl.style.opacity = (sm(0.94, 1, d) * 0.62).toFixed(3);
   const hudDown = sm(0.03, 0.09, d) * (1 - sm(0.86, 0.92, d));
   const h = d > 0 ? hudDown : vis.hudUp;
   hud.style.opacity = h.toFixed(3);
@@ -227,10 +227,10 @@ function initFlight() {
   const fadeOut = (el, at, dur = 0.035) => tl.to(el, { autoAlpha: 0, y: -60, filter: "blur(10px)", duration: dur }, at);
 
   // intro leaves as we start climbing
-  tl.to(scenes.intro, { autoAlpha: 0, y: -80, scale: 0.96, filter: "blur(12px)", duration: 0.06 }, 0.02);
-  fadeIn(scenes.c1, 0.11);
-  fadeOut(scenes.c1, 0.22);
-  fadeIn(scenes.c2, 0.27);
+  tl.to(scenes.intro, { autoAlpha: 0, y: -80, scale: 0.96, filter: "blur(12px)", duration: 0.05 }, 0.03);
+  fadeIn(scenes.c1, 0.2);
+  fadeOut(scenes.c1, 0.255);
+  fadeIn(scenes.c2, 0.285);
   fadeOut(scenes.c2, 0.36);
   tl.fromTo(scenes.c3, { autoAlpha: 0, scale: 0.85, filter: "blur(14px)" }, { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: 0.05 }, 0.45);
   tl.to(scenes.c3, { autoAlpha: 0, scale: 1.15, filter: "blur(14px)", duration: 0.05 }, 0.57);
@@ -314,8 +314,8 @@ function initDescent() {
   fadeOut(scenes.d2, 0.35);
   tl.fromTo(scenes.d3, { autoAlpha: 0, scale: 0.88, filter: "blur(14px)" }, { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: 0.05 }, 0.6);
   tl.to(scenes.d3, { autoAlpha: 0, scale: 1.12, filter: "blur(14px)", duration: 0.04 }, 0.72);
-  fadeIn(scenes.d4, 0.77, 0.03);
-  fadeOut(scenes.d4, 0.86, 0.03);
+  fadeIn(scenes.d4, 0.76, 0.03);
+  fadeOut(scenes.d4, 0.85, 0.03);
   tl.set(scenes.d5, { autoAlpha: 1 }, 0.95);
   tl.fromTo($(".eyebrow", scenes.d5), { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.015 }, 0.955);
   tl.fromTo(studioWords, { yPercent: 110 }, { yPercent: 0, duration: 0.025, stagger: 0.006 }, 0.96);

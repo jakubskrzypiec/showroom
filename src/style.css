@@ -1278,42 +1278,8 @@ main {
   z-index: 1;
   pointer-events: none;
   opacity: 0;
-  overflow: hidden;
-  background:
-    radial-gradient(70% 55% at 50% 38%, rgba(254, 177, 34, 0.18), transparent 70%),
-    radial-gradient(60% 60% at 100% 0%, rgba(27, 84, 255, 0.35), transparent 70%),
-    radial-gradient(60% 60% at 0% 100%, rgba(61, 43, 255, 0.4), transparent 70%),
-    #060a16;
+  background: radial-gradient(90% 80% at 50% 45%, rgba(4, 8, 17, 0.55), rgba(4, 8, 17, 0.95));
 }
-/* the window we just flew through, now behind us, glowing on the back wall */
-.room__window {
-  position: absolute;
-  left: 50%;
-  top: 14%;
-  width: min(70vw, 900px);
-  aspect-ratio: 16 / 10;
-  transform: translateX(-50%);
-  border: 1px solid rgba(131, 249, 255, 0.18);
-  border-radius: 6px;
-  background:
-    linear-gradient(90deg, transparent calc(50% - 1px), rgba(131, 249, 255, 0.18) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
-    radial-gradient(120% 90% at 50% 100%, rgba(27, 84, 255, 0.35), rgba(4, 8, 17, 0.2) 70%);
-  box-shadow: 0 0 120px -20px rgba(27, 84, 255, 0.5) inset;
-  opacity: 0.6;
-}
-.room__floor {
-  position: absolute;
-  left: -20%;
-  right: -20%;
-  bottom: -10%;
-  height: 46%;
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 8%);
-  transform: perspective(600px) rotateX(62deg);
-  transform-origin: bottom;
-  -webkit-mask: linear-gradient(to top, #000, transparent);
-  mask: linear-gradient(to top, #000, transparent);
-}
-
 /* keep captions readable over the lit city */
 .scene .display,
 .scene .caption__text,
@@ -1325,4 +1291,19 @@ main {
 .scene em,
 .scene em .w {
   text-shadow: none;
+}
+
+/* the opening headline sits left, the monitor glows on the right */
+.scene--intro.scene--left {
+  align-items: flex-start;
+  text-align: left;
+}
+.scene--intro .display {
+  font-size: clamp(64px, 11vw, 180px);
+}
+@media (max-width: 760px) {
+  .scene--intro.scene--left {
+    justify-content: flex-start;
+    padding-top: 22vh;
+  }
 }

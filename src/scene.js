@@ -19,7 +19,7 @@ const C = {
 
 const EARTH_R = 50;
 const EARTH_CENTER = new THREE.Vector3(0, -EARTH_R, 0);
-const CLOUD_LAYERS = [3, 5.5, 8.5, 12, 16];
+const CLOUD_LAYERS = [5.5, 8, 11, 14.5, 18];
 
 const isMobile = window.matchMedia("(max-width: 760px)").matches;
 
@@ -44,8 +44,13 @@ const NOISE = /* glsl */ `
 /* ------------------------------------------------------------------ */
 const KEYS = [
   // p,    position,                       look target
-  [0.0, new THREE.Vector3(0, 1.1, 14), new THREE.Vector3(0, 6.5, -14)],
-  [0.18, new THREE.Vector3(0, 7, -1), new THREE.Vector3(0, 16, -13)],
+  // inside the studio, over the shoulder at the monitor
+  [0.0, new THREE.Vector3(0.62, 2.5, 16.6), new THREE.Vector3(1.75, 2.42, 15.55)],
+  // turn to the window
+  [0.06, new THREE.Vector3(-0.15, 2.5, 16.8), new THREE.Vector3(0, 2.42, 9)],
+  // out through the window, down the boulevard
+  [0.12, new THREE.Vector3(0, 2.42, 13.2), new THREE.Vector3(0, 2.9, 0)],
+  [0.2, new THREE.Vector3(0, 6.5, 2), new THREE.Vector3(0, 14, -11)],
   [0.36, new THREE.Vector3(0, 21, -2), new THREE.Vector3(0, 30, -14)],
   [0.5, new THREE.Vector3(0, 34, 6), new THREE.Vector3(0, 6, -60)],
   [0.62, new THREE.Vector3(6, 48, 70), new THREE.Vector3(0, -22, -20)],
@@ -60,11 +65,15 @@ const AFTER_TGT = new THREE.Vector3(-18, 0, 0);
 const D_KEYS = [
   [0.0, KEYS[KEYS.length - 1][1].clone().add(AFTER_POS), KEYS[KEYS.length - 1][2].clone().add(AFTER_TGT)],
   [0.2, new THREE.Vector3(-10, 60, 150), new THREE.Vector3(0, -50, 0)],
-  [0.38, new THREE.Vector3(0, 50, 30), new THREE.Vector3(0, -10, -20)],
-  [0.55, new THREE.Vector3(0, 19, 12), new THREE.Vector3(0, 0, -8)],
-  [0.72, new THREE.Vector3(0, 4.5, 17), new THREE.Vector3(0, 2.2, -14)],
-  [0.88, new THREE.Vector3(0, 2.45, -6), new THREE.Vector3(0, 2.4, -16)],
-  [1.0, new THREE.Vector3(0, 2.4, -13.2), new THREE.Vector3(0, 2.4, -20)],
+  [0.38, new THREE.Vector3(0, 50, -30), new THREE.Vector3(0, -10, 20)],
+  [0.55, new THREE.Vector3(0, 22, -14), new THREE.Vector3(0, 0, 8)],
+  // under the clouds, lined up with the boulevard
+  [0.72, new THREE.Vector3(0, 4.5, -16), new THREE.Vector3(0, 2.4, 14)],
+  [0.86, new THREE.Vector3(0, 2.45, 7), new THREE.Vector3(0, 2.4, 16)],
+  // through the window...
+  [0.93, new THREE.Vector3(0, 2.42, 14.9), new THREE.Vector3(0, 2.4, 18)],
+  // ...and turn to the desk
+  [1.0, new THREE.Vector3(-0.45, 2.52, 15.35), new THREE.Vector3(1.7, 2.36, 16.15)],
 ];
 
 function makePath(keys) {
@@ -123,11 +132,13 @@ export function createScene(canvas, { onProgress } = {}) {
     t.anisotropy = 8;
     return t;
   };
-  const dayMap = tex("earth_atmos_2048.jpg", true);
-  const nightMap = tex("earth_lights_2048.png", true);
-  const specMap = tex("earth_specular_2048.jpg", false);
-  const cloudMap = tex("earth_clouds_1024.jpg", false);
-  cloudMap.wrapS = THREE.RepeatWrapping;
+  // 4K NASA-derived maps: day colour, night lights, and a packed map
+  // (R = elevation, G = land mask, B = clouds)
+  const dayMap = tex("earth_day_4096.jpg", true);
+  const nightMap = tex("earth_night_4096.jpg", true);
+  const brcMap = tex("earth_bump_roughness_clouds_4096.jpg", false);
+  brcMap.wrapS = THREE.RepeatWrapping;
+  dayMap.wrapS = nightMap.wrapS = THREE.RepeatWrapping;
 
   /* ---------------- sky dome ---------------- */
   const skyUniforms = {
@@ -349,8 +360,7 @@ export function createScene(canvas, { onProgress } = {}) {
   const earthUniforms = {
     uDay: { value: dayMap },
     uNight: { value: nightMap },
-    uSpec: { value: specMap },
-    uClouds: { value: cloudMap },
+    uBRC: { value: brcMap },
     uSun: { value: sunDir },
     uTime: { value: 0 },
     uCloudShift: { value: 0 },
@@ -373,46 +383,75 @@ export function createScene(canvas, { onProgress } = {}) {
           gl_Position = projectionMatrix * viewMatrix * w;
         }`,
       fragmentShader: /* glsl */ `
-        uniform sampler2D uDay, uNight, uSpec, uClouds;
+        uniform sampler2D uDay, uNight, uBRC;
         uniform vec3 uSun, uCobalt, uCyan, uAmber, uBg;
         uniform float uCloudShift;
         varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+
+        // bump mapping from the elevation channel (screen-space derivatives)
+        vec3 bumpNormal(vec3 n, float h, float scale){
+          vec3 sx = dFdx(vW), sy = dFdy(vW);
+          vec3 r1 = cross(sy, n), r2 = cross(n, sx);
+          float det = dot(sx, r1);
+          vec2 dh = vec2(dFdx(h), dFdy(h)) * scale;
+          vec3 grad = sign(det) * (dh.x * r1 + dh.y * r2);
+          return normalize(abs(det) * n - grad);
+        }
+
         void main(){
-          vec3 n = normalize(vN);
+          vec3 n0 = normalize(vN);
           vec3 v = normalize(cameraPosition - vW);
+
+          vec4 brc = texture2D(uBRC, vUv);
+          float height = brc.r;
+          float land = smoothstep(0.25, 0.75, brc.g);
+          float ocean = 1.0 - land;
+          float cl = texture2D(uBRC, vUv + vec2(uCloudShift, 0.0)).b;
+          float clShadow = texture2D(uBRC, vUv + vec2(uCloudShift - 0.0015, 0.001)).b;
+
+          // relief only on land, so mountain ranges catch the light
+          vec3 n = bumpNormal(n0, height, 0.8 * land);
+          float ndl0 = dot(n0, uSun);
           float ndl = dot(n, uSun);
-          float dayF = smoothstep(-0.18, 0.35, ndl);
+          float dayF = smoothstep(-0.16, 0.3, ndl0);
+          float relief = clamp(0.55 + 0.45 * (ndl - ndl0) * 6.0, 0.35, 1.4);
 
+          // --- surface colour ---
           vec3 day = texture2D(uDay, vUv).rgb;
-          float lum = dot(day, vec3(0.299, 0.587, 0.114));
-          float ocean = texture2D(uSpec, vUv).r;
-          // colour-grade toward the cobalt palette
-          // colour-grade toward the cobalt palette (cool shadows, cyan highlights)
-          vec3 tint = mix(vec3(0.55, 0.72, 1.3), vec3(0.85, 1.05, 1.15), smoothstep(0.1, 0.5, lum));
-          vec3 surf = day * tint;
-          surf = mix(surf, uCobalt * 0.16 + uBg * 0.6, ocean * 0.6);
+          // land: natural colour, a touch more contrast and saturation, deserts pulled toward sand
+          float lum = dot(day, vec3(0.2126, 0.7152, 0.0722));
+          vec3 landCol = mix(vec3(lum), day, 1.18);
+          landCol = pow(max(landCol, 0.0), vec3(1.08)) * 1.12;
+          landCol = mix(landCol, landCol * vec3(0.92, 0.95, 1.08), smoothstep(0.25, 0.6, lum));
+          // ocean: deep cobalt, lighter on shallow shelves
+          float shelf = smoothstep(0.02, 0.12, lum);
+          vec3 oceanCol = mix(uBg * 0.9 + uCobalt * 0.08, uCobalt * 0.28 + uCyan * 0.05, shelf);
+          vec3 surf = mix(oceanCol, landCol * relief, land);
 
-          // clouds
-          float cl = texture2D(uClouds, vUv + vec2(uCloudShift, 0.0)).r;
-          vec3 lit = surf * (0.04 + 0.95 * dayF);
-          lit = mix(lit, vec3(0.78, 0.86, 1.0) * (0.03 + 0.78 * dayF), cl * 0.8);
+          // diffuse light + cloud shadows
+          float shadow = 1.0 - clShadow * 0.45 * dayF;
+          vec3 lit = surf * (0.03 + 1.0 * dayF) * shadow;
+
+          // clouds, lit by the sun, faintly blue on the night side
+          vec3 cloudCol = mix(uCobalt * 0.05, vec3(0.92, 0.95, 1.0), dayF);
+          lit = mix(lit, cloudCol, cl * 0.88);
 
           // ocean sun glint
-          vec3 h = normalize(uSun + v);
-          float spec = pow(max(dot(n, h), 0.0), 60.0) * ocean * (1.0 - cl) * dayF;
-          lit += (uAmber * 0.5 + vec3(0.5)) * spec * 0.9;
+          vec3 hv = normalize(uSun + v);
+          float spec = pow(max(dot(n0, hv), 0.0), 90.0) * ocean * (1.0 - cl) * dayF;
+          lit += (uAmber * 0.45 + vec3(0.55)) * spec * 1.1;
 
           // city lights on the night side
           vec3 night = texture2D(uNight, vUv).rgb;
           float nl = dot(night, vec3(0.333));
-          lit += uAmber * pow(nl, 1.4) * 2.6 * (1.0 - dayF) * (1.0 - cl * 0.7);
+          lit += uAmber * pow(nl, 1.25) * 2.4 * (1.0 - dayF) * (1.0 - cl * 0.75);
 
-          // inner atmospheric rim
-          float fres = pow(1.0 - max(dot(n, v), 0.0), 2.6);
-          vec3 rim = mix(uCobalt, uCyan, smoothstep(-0.2, 0.6, ndl));
-          lit += rim * fres * (0.2 + 0.7 * smoothstep(-0.4, 0.5, ndl));
-          // terminator glow
-          lit += uAmber * 0.35 * exp(-pow(ndl * 7.0, 2.0)) * (1.0 - fres) * 0.6;
+          // atmosphere: scattering haze toward the limb, rim glow, warm terminator
+          float fres = pow(1.0 - max(dot(n0, v), 0.0), 2.4);
+          vec3 rim = mix(uCobalt, uCyan, smoothstep(-0.2, 0.6, ndl0));
+          lit = mix(lit, rim * 0.6, fres * 0.55 * smoothstep(-0.3, 0.4, ndl0));
+          lit += rim * fres * (0.12 + 0.55 * smoothstep(-0.4, 0.5, ndl0));
+          lit += uAmber * 0.07 * exp(-pow(ndl0 * 7.0, 2.0)) * (1.0 - fres);
 
           gl_FragColor = vec4(lit, 1.0);
         }`,
