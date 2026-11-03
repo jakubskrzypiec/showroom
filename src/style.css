@@ -1311,11 +1311,12 @@ main {
 /* ------------------------------------------------------------------ */
 /* Rolka (?reel)                                                       */
 /* ------------------------------------------------------------------ */
-.reel .nav__links,.reel .nav__tag,.reel .cursor,.reel .scrollcue,.reel .hud__gauge{display:none!important}
-.reel .nav{justify-content:center;padding-top:150px}
-.reel .hud{bottom:330px}
-.reel .scene{padding-bottom:300px;padding-top:240px}
-.reel .scene--hero{justify-content:center;padding-bottom:300px}
+.reel .cursor,.reel .scrollcue{display:none!important}
+.reel-mobile .nav__links,.reel-mobile .nav__tag,.reel-mobile .hud__gauge{display:none!important}
+.reel-mobile .nav{justify-content:center;padding-top:150px}
+.reel-mobile .hud{bottom:330px}
+.reel-mobile .scene{padding-bottom:300px;padding-top:240px}
+.reel-mobile .scene--hero{justify-content:center;padding-bottom:300px}
 .reel-overlay{position:fixed;inset:0;z-index:60;pointer-events:none}
 .reel-overlay:before{content:'';position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 45%,rgba(4,8,17,.35),rgba(4,8,17,.8));opacity:var(--reel-dim,0)}
 .reel-hook{position:absolute;left:24px;right:24px;top:300px;text-align:center;opacity:0;display:flex;flex-direction:column;gap:6px}

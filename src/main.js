@@ -635,42 +635,55 @@ else
 /* Tryb nagrywania rolki (?reel): start od razu w niebie, klatka po klatce */
 /* ------------------------------------------------------------------ */
 function initReel() {
-  document.documentElement.classList.add("reel");
+  const BRAND = "21 projekt";
+  const desktop = new URLSearchParams(location.search).get("reel") === "desktop";
+  document.documentElement.classList.add("reel", desktop ? "reel-desktop" : "reel-mobile");
   $("[data-preloader]")?.remove();
-  const ov = document.createElement("div");
-  ov.className = "reel-overlay";
-  ov.innerHTML = `
-    <div class="reel-hook"><span>Tak może zaczynać się</span><b>Twoja strona.</b></div>
-    <div class="reel-end">
-      <p class="reel-kicker">Projekt · strona 3D · scroll</p>
-      <h2>Robię strony,<br>które zatrzymują<br><em>scroll.</em></h2>
-      <p class="reel-lede">Szukam marek, które chcą high-endowej strony 3D. Takiej jak ta.</p>
-      <p class="reel-cta"><span class="pill__dot"></span>Napisz do mnie w DM</p>
-    </div>`;
-  document.body.appendChild(ov);
-  const hook = $(".reel-hook", ov);
-  const end = $(".reel-end", ov);
-  const endBits = [...end.children];
+  // marka autora zamiast fikcyjnego „Stratos”
+  const logo = $(".nav__logo");
+  if (logo) logo.lastChild.textContent = " " + BRAND;
+  const tag = $(".nav__tag");
+  if (tag) tag.textContent = "Strony 3D · scroll storytelling";
+  const heroEyebrow = $(".scene--hero .eyebrow");
+  if (heroEyebrow) heroEyebrow.innerHTML = '<span class="dot dot--amber"></span>21 Projekt · Strony 3D';
+  const heroLede = $(".lede--hero");
+  if (heroLede) heroLede.textContent = "21 Projekt tworzy strony, które robią wrażenie od pierwszego scrolla: 3D, ruch i storytelling dla marek, które chcą się wyróżnić.";
+  const P0 = 0.2; // start nad dachami, w niebie
   const sm = (a, b, x) => {
     const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
     return t * t * (3 - 2 * t);
   };
-  const P0 = 0.2; // start nad dachami, w niebie
+  let hook = null, end = null, endBits = [];
+  if (!desktop) {
+    const ov = document.createElement("div");
+    ov.className = "reel-overlay";
+    ov.innerHTML = `
+      <div class="reel-hook"><span>Tak może zaczynać się</span><b>Twoja strona.</b></div>
+      <div class="reel-end">
+        <p class="reel-kicker">21 Projekt · strona 3D</p>
+        <h2>Robię strony,<br>które zatrzymują<br><em>scroll.</em></h2>
+        <p class="reel-lede">Szukam marek, które chcą high-endowej strony 3D. Takiej jak ta.</p>
+        <p class="reel-cta"><span class="pill__dot"></span>Napisz do mnie w DM</p>
+      </div>`;
+    document.body.appendChild(ov);
+    hook = $(".reel-hook", ov);
+    end = $(".reel-end", ov);
+    endBits = [...end.children];
+  }
   window.__reel = {
     ready: scene.loaded,
-    // sec: czas klatki w sekundach; dur: długość przelotu; total: długość rolki
     step(sec, dur = 9.5) {
       const x = Math.min(1, sec / dur);
-      const q = 0.5 - 0.5 * Math.cos(Math.PI * x); // łagodny start i lądowanie, równe tempo w środku
+      const q = 0.5 - 0.5 * Math.cos(Math.PI * x); // łagodny start i lądowanie
       const p = P0 + (1 - P0) * q;
       flightTl.progress(Math.min(1, p));
       updateHud(altitudeAt(p));
       scene.reelFrame(p, sec);
+      $("[data-hud]").style.opacity = (1 - sm(0.6, 0.7, p)).toFixed(3);
+      if (desktop) return;
       hook.style.opacity = (sm(0.2, 0.8, sec) * (1 - sm(2.4, 3.0, sec))).toFixed(3);
       hook.style.transform = `translateY(${((1 - sm(0.2, 0.9, sec)) * 24).toFixed(1)}px)`;
       const e0 = dur + 0.8;
-      const hudEl = $("[data-hud]");
-      hudEl.style.opacity = (1 - sm(0.6, 0.7, p)).toFixed(3);
       $(".flight__sticky").style.opacity = (1 - sm(e0, e0 + 0.7, sec)).toFixed(3);
       document.documentElement.style.setProperty("--reel-dim", sm(e0, e0 + 0.9, sec).toFixed(3));
       endBits.forEach((el, i) => {
