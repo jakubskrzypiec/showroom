@@ -1231,3 +1231,23 @@ main {
     height: 500vh;
   }
 }
+
+/* gradient words survive splitting: paint each word, not the <em> wrapper */
+.display em,
+.launch__title em {
+  background: none;
+  color: inherit;
+}
+.display em,
+.display em .w,
+.launch__title em,
+.launch__title em .w {
+  color: transparent;
+  background-image: linear-gradient(100deg, var(--cyan), #fff 45%, var(--cobalt));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+.display em:has(.w),
+.launch__title em:has(.w) {
+  background: none;
+}
