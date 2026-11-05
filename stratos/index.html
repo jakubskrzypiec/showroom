@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#040811" />
+    <title>Stratos — Orbital Design Studio</title>
+    <meta name="description" content="Stratos is a digital design studio that takes brands above the noise. Scroll to ascend." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='9' fill='%231B54FF'/%3E%3Cellipse cx='16' cy='16' rx='15' ry='5' fill='none' stroke='%2383F9FF' stroke-width='1.6' transform='rotate(-24 16 16)'/%3E%3C/svg%3E" />
+    <script type="module" crossorigin src="./assets/index-C6kAKChO.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DLBtnNpG.css">
+  </head>
+  <body>
+    <!-- ============ PRELOADER ============ -->
+    <div class="preloader" data-preloader>
+      <div class="preloader__top">
+        <span>Stratos / Pre-flight check</span>
+        <span data-preloader-status>Loading payload</span>
+      </div>
+      <div class="preloader__count"><span data-preloader-count>000</span><sup>%</sup></div>
+      <div class="preloader__bottom">
+        <div class="preloader__track"><div class="preloader__bar" data-preloader-bar></div></div>
+        <div class="preloader__meta">
+          <span>T–minus</span>
+          <span>Katowice · 50.26° N · 19.02° E</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ BACKGROUND LAYERS ============ -->
+    <canvas id="webgl" aria-hidden="true"></canvas>
+    <div class="mist" data-mist aria-hidden="true"></div>
+    <div class="aurora" data-aurora aria-hidden="true">
+      <span class="aurora__blob aurora__blob--1"></span>
+      <span class="aurora__blob aurora__blob--2"></span>
+      <span class="aurora__blob aurora__blob--3"></span>
+    </div>
+    <div class="veil" data-veil aria-hidden="true"></div>
+    <div class="room" data-room aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="cursor" data-cursor aria-hidden="true"><span class="cursor__dot"></span><span class="cursor__ring"></span></div>
+
+    <!-- ============ NAV ============ -->
+    <header class="nav" data-nav>
+      <a class="nav__logo" href="#top" aria-label="Stratos home">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="8.5" fill="currentColor"/><ellipse cx="16" cy="16" rx="15" ry="5" fill="none" stroke="var(--cyan)" stroke-width="1.6" transform="rotate(-24 16 16)"/></svg>
+        stratos
+      </a>
+      <span class="nav__tag">Orbital Design Studio</span>
+      <nav class="nav__links" aria-label="Primary">
+        <a href="#manifesto" data-magnetic>Manifesto</a>
+        <a href="#services" data-magnetic>Capabilities</a>
+        <a href="#missions" data-magnetic>Missions</a>
+        <a class="pill pill--glass" href="#launch" data-magnetic><span class="pill__dot"></span>Start a mission</a>
+      </nav>
+    </header>
+
+    <!-- ============ ALTITUDE HUD ============ -->
+    <aside class="hud" data-hud aria-hidden="true">
+      <div class="hud__readout">
+        <span class="hud__label">Altitude</span>
+        <span class="hud__alt"><span data-alt>0.0</span><small>km</small></span>
+        <span class="hud__layer" data-layer>Troposphere</span>
+      </div>
+      <div class="hud__gauge">
+        <div class="hud__ticks"></div>
+        <div class="hud__fill" data-gauge></div>
+        <ul class="hud__marks">
+          <li style="--at:0.05">Ground</li>
+          <li style="--at:0.27">12 km</li>
+          <li style="--at:0.4">50 km</li>
+          <li style="--at:0.52">100 km</li>
+          <li style="--at:0.7">400 km</li>
+          <li style="--at:0.98">GEO</li>
+        </ul>
+      </div>
+    </aside>
+
+    <main id="top">
+      <!-- ============ FLIGHT (scroll-driven ascent) ============ -->
+      <section class="flight" id="flight" data-flight>
+        <div class="flight__sticky">
+          <div class="scene scene--intro scene--left" data-scene="intro">
+            <p class="eyebrow">Katowice, PL · 50.26° N 19.02° E</p>
+            <h1 class="display">Look <em>up.</em></h1>
+            <p class="lede">Most brands live at ground level. Let us show you the view from above.</p>
+            <div class="scrollcue"><span class="scrollcue__line"></span><span>Scroll to ascend</span></div>
+          </div>
+
+          <div class="scene scene--caption scene--left" data-scene="c1">
+            <span class="caption__num">12 km</span>
+            <p class="caption__text">Above the weather,<br />the noise falls away.</p>
+          </div>
+          <div class="scene scene--caption scene--right" data-scene="c2">
+            <span class="caption__num">50 km</span>
+            <p class="caption__text">The stratosphere.<br />Air thins. Colour deepens.</p>
+          </div>
+          <div class="scene scene--caption scene--center" data-scene="c3">
+            <span class="caption__num caption__num--big">100 km</span>
+            <p class="caption__text">The Kármán line.<br />Officially — space.</p>
+          </div>
+
+          <div class="scene scene--hero" data-scene="hero">
+            <p class="eyebrow"><span class="dot dot--amber"></span>Now in orbit · 35 786 km</p>
+            <h2 class="display display--hero" data-hero-title>We design beyond the atmosphere.</h2>
+            <p class="lede lede--hero">Stratos is a product &amp; brand studio from Katowice for teams who refuse to stay grounded. Strategy, interfaces and immersive web, engineered for escape velocity.</p>
+            <div class="hero__ctas">
+              <a class="pill pill--solid" href="#launch" data-magnetic><span class="pill__icon">↘</span>Plan your launch</a>
+              <a class="pill pill--glass" href="#missions" data-magnetic>See missions</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MANIFESTO ============ -->
+      <section class="manifesto" id="manifesto">
+        <div class="container">
+          <p class="section-label" data-reveal><span>01</span>Manifesto</p>
+          <p class="manifesto__text" data-scrub-words>
+            Gravity is the default. Every product starts on the ground — crowded, noisy, forgettable. We build the thrust that gets it out: sharp strategy, interfaces that feel weightless, and motion that makes people look up.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ SERVICES (sticky stack) ============ -->
+      <section class="services" id="services">
+        <div class="container">
+          <div class="services__head">
+            <p class="section-label" data-reveal><span>02</span>Capabilities</p>
+            <h2 class="h2" data-split>Four stages to orbit.</h2>
+          </div>
+
+          <div class="stack" data-stack>
+            <article class="card" data-card style="--glow: var(--cobalt)">
+              <div class="card__top"><span class="card__stage">Stage 01</span><span class="card__alt">0 → 12 km</span></div>
+              <h3 class="card__title">Launch Strategy</h3>
+              <p class="card__copy">Positioning, research and narrative. We find the trajectory before anything gets built — so every pixel pushes in the same direction.</p>
+              <ul class="tags"><li><i style="--c:var(--cyan)"></i>Research</li><li><i style="--c:var(--cobalt)"></i>Positioning</li><li><i style="--c:var(--amber)"></i>Naming</li></ul>
+              <div class="card__art card__art--1" aria-hidden="true"></div>
+            </article>
+            <article class="card" data-card style="--glow: var(--violet)">
+              <div class="card__top"><span class="card__stage">Stage 02</span><span class="card__alt">12 → 50 km</span></div>
+              <h3 class="card__title">Brand Systems</h3>
+              <p class="card__copy">Identity that holds its shape under pressure. Type, colour, motion principles and a design system your team can actually fly.</p>
+              <ul class="tags"><li><i style="--c:var(--cyan)"></i>Identity</li><li><i style="--c:var(--violet)"></i>Design systems</li><li><i style="--c:var(--white)"></i>Guidelines</li></ul>
+              <div class="card__art card__art--2" aria-hidden="true"></div>
+            </article>
+            <article class="card" data-card style="--glow: var(--cyan)">
+              <div class="card__top"><span class="card__stage">Stage 03</span><span class="card__alt">50 → 100 km</span></div>
+              <h3 class="card__title">Product Design</h3>
+              <p class="card__copy">Web and mobile products with zero drag. Flows, prototypes and interfaces tested with real people before they ever reach orbit.</p>
+              <ul class="tags"><li><i style="--c:var(--cyan)"></i>UX / UI</li><li><i style="--c:var(--cobalt)"></i>Prototyping</li><li><i style="--c:var(--amber)"></i>Testing</li></ul>
+              <div class="card__art card__art--3" aria-hidden="true"></div>
+            </article>
+            <article class="card" data-card style="--glow: var(--amber)">
+              <div class="card__top"><span class="card__stage">Stage 04</span><span class="card__alt">100 km → ∞</span></div>
+              <h3 class="card__title">Immersive Web</h3>
+              <p class="card__copy">WebGL, 3D and scroll-driven storytelling — like the page you just flew through. Built to perform, built to be remembered.</p>
+              <ul class="tags"><li><i style="--c:var(--amber)"></i>WebGL</li><li><i style="--c:var(--cyan)"></i>Motion</li><li><i style="--c:var(--cobalt)"></i>Creative dev</li></ul>
+              <div class="card__art card__art--4" aria-hidden="true"></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MISSIONS (horizontal) ============ -->
+      <section class="missions" id="missions" data-missions>
+        <div class="missions__pin">
+          <div class="missions__head container">
+            <p class="section-label"><span>03</span>Selected missions</p>
+            <p class="missions__count"><span data-mission-index>01</span> / 04</p>
+          </div>
+          <div class="missions__track" data-track>
+            <article class="mission" style="--a: var(--cobalt); --b: var(--cyan)">
+              <div class="mission__visual"><div class="planet"></div><div class="orbit orbit--1"></div><div class="orbit orbit--2"></div></div>
+              <div class="mission__info">
+                <span class="mission__code">MSN–041 · Fintech</span>
+                <h3>Kármán Bank</h3>
+                <p>A neobank rebuilt from the ground up. 2.4M users moved over in a weekend.</p>
+              </div>
+            </article>
+            <article class="mission" style="--a: var(--amber); --b: var(--violet)">
+              <div class="mission__visual"><div class="planet planet--sun"></div><div class="orbit orbit--1"></div><div class="orbit orbit--3"></div></div>
+              <div class="mission__info">
+                <span class="mission__code">MSN–057 · Energy</span>
+                <h3>Helios Grid</h3>
+                <p>Live energy dashboard for a continent-wide solar network. Data you can feel.</p>
+              </div>
+            </article>
+            <article class="mission" style="--a: var(--violet); --b: var(--cobalt)">
+              <div class="mission__visual"><div class="planet planet--ring"></div><div class="orbit orbit--2"></div></div>
+              <div class="mission__info">
+                <span class="mission__code">MSN–062 · Mobility</span>
+                <h3>Perigee</h3>
+                <p>Brand and app for an electric air-taxi startup. From pitch deck to first flight.</p>
+              </div>
+            </article>
+            <article class="mission" style="--a: var(--cyan); --b: var(--cobalt)">
+              <div class="mission__visual"><div class="planet planet--ice"></div><div class="orbit orbit--1"></div><div class="orbit orbit--3"></div></div>
+              <div class="mission__info">
+                <span class="mission__code">MSN–078 · Health</span>
+                <h3>Aurora Labs</h3>
+                <p>Clinical research platform. Calm, precise, and finally loved by the people using it.</p>
+              </div>
+            </article>
+          </div>
+          <div class="missions__progress"><span data-mission-bar></span></div>
+        </div>
+      </section>
+
+      <!-- ============ NUMBERS ============ -->
+      <section class="numbers" id="numbers">
+        <div class="container">
+          <p class="section-label" data-reveal><span>04</span>Flight log</p>
+          <div class="numbers__grid">
+            <div class="stat" data-reveal><span class="stat__n" data-count="148">0</span><span class="stat__l">Missions launched</span></div>
+            <div class="stat" data-reveal><span class="stat__n" data-count="27">0</span><span class="stat__l">Industry awards</span></div>
+            <div class="stat" data-reveal><span class="stat__n" data-count="12">0</span><span class="stat__l">Countries in orbit</span></div>
+            <div class="stat" data-reveal><span class="stat__n" data-count="98" data-suffix="%">0</span><span class="stat__l">Clients who relaunch</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ MISSION KIT ============ -->
+      <section class="kit" id="kit">
+        <div class="container kit__inner">
+          <p class="section-label" data-reveal><span>05</span>Mission kit</p>
+          <p class="kit__eyebrow" data-reveal>Typography</p>
+          <p class="kit__type" data-reveal>Inter Tight</p>
+          <div class="kit__weights" data-reveal><span>Regular</span><span>Medium</span></div>
+          <p class="kit__eyebrow" data-reveal>Colour palette</p>
+          <ul class="kit__palette">
+            <li class="swatch" data-reveal data-copy="#83F9FF"><i style="--c:#83F9FF"></i>#83F9FF</li>
+            <li class="swatch" data-reveal data-copy="#1B54FF"><i style="--c:#1B54FF"></i>#1B54FF</li>
+            <li class="swatch" data-reveal data-copy="#FEB122"><i style="--c:#FEB122"></i>#FEB122</li>
+            <li class="swatch" data-reveal data-copy="#040811"><i style="--c:#040811"></i>#040811</li>
+            <li class="swatch" data-reveal data-copy="#FFFFFF"><i style="--c:#FFFFFF"></i>#FFFFFF</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ DESCENT (scroll-driven return to Katowice) ============ -->
+      <section class="flight descent" id="descent" data-descent>
+        <div class="flight__sticky">
+          <div class="scene scene--center" data-dscene="d1">
+            <p class="eyebrow"><span class="dot dot--amber"></span>Re-entry</p>
+            <p class="caption__text caption__text--wide">Time to come home.</p>
+          </div>
+          <div class="scene scene--caption scene--left" data-dscene="d2">
+            <span class="caption__num">50.26° N · 19.02° E</span>
+            <p class="caption__text">Every orbit ends somewhere.</p>
+          </div>
+          <div class="scene scene--center" data-dscene="d3">
+            <p class="eyebrow">Silesia, Poland</p>
+            <h2 class="display">Katowice.</h2>
+            <p class="lede">Where Stratos lands between missions.</p>
+          </div>
+          <div class="scene scene--caption scene--right" data-dscene="d4">
+            <span class="caption__num">Stratos HQ · Katowice</span>
+            <p class="caption__text">The light is on.<br />Come in.</p>
+          </div>
+          <div class="scene scene--center scene--studio" data-dscene="d5">
+            <p class="eyebrow"><span class="dot dot--amber"></span>You've landed</p>
+            <h2 class="display display--hero">Welcome to the <em>studio.</em></h2>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ LAUNCH / FOOTER ============ -->
+      <footer class="launch" id="launch" data-launch>
+        <div class="container">
+          <p class="section-label" data-reveal><span>06</span>Launch window open</p>
+          <h2 class="launch__title" data-split>Ready for<br /><em>lift-off?</em></h2>
+          <div class="launch__ctas" data-reveal>
+            <a class="pill pill--icon" href="mailto:hello@stratos.studio" data-magnetic aria-label="Email us"><span>↘</span></a>
+            <a class="pill pill--violet" href="mailto:hello@stratos.studio" data-magnetic>hello@stratos.studio</a>
+            <a class="pill pill--glass" href="#top" data-magnetic data-to-top>Fly it again ↑</a>
+          </div>
+          <div class="launch__bottom">
+            <span>© 2026 Stratos · Katowice, Poland — a concept showroom</span>
+            <span>Built with Three.js · GSAP · Lenis</span>
+            <span data-clock>UTC 00:00:00</span>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+  </body>
+</html>
